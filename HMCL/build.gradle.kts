@@ -25,7 +25,7 @@ val buildNumber = System.getenv("BUILD_NUMBER")?.toInt().let { number ->
         if (!shortCommit.isNullOrEmpty()) "$prefix-$shortCommit" else "SNAPSHOT"
     }
 }
-val versionRoot = System.getenv("VERSION_ROOT") ?: "3.5"
+val versionRoot = System.getenv("VERSION_ROOT") ?: "3.6"
 val versionType = System.getenv("VERSION_TYPE") ?: if (isOfficial) "nightly" else "unofficial"
 
 val microsoftAuthId = System.getenv("MICROSOFT_AUTH_ID") ?: ""
@@ -37,13 +37,13 @@ version = "$versionRoot.$buildNumber"
 dependencies {
     implementation(project(":HMCLCore"))
     implementation("libs:JFoenix")
+    implementation("com.twelvemonkeys.imageio:imageio-webp:3.12.0")
 }
 
 fun digest(algorithm: String, bytes: ByteArray): ByteArray = MessageDigest.getInstance(algorithm).digest(bytes)
 
 fun createChecksum(file: File) {
     val algorithms = linkedMapOf(
-        "MD5" to "md5",
         "SHA-1" to "sha1",
         "SHA-256" to "sha256",
         "SHA-512" to "sha512"
@@ -111,6 +111,9 @@ tasks.getByName<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("sha
     exclude("**/package-info.class")
     exclude("META-INF/maven/**")
 
+    exclude("META-INF/services/javax.imageio.spi.ImageReaderSpi")
+    exclude("META-INF/services/javax.imageio.spi.ImageInputStreamSpi")
+
     minimize {
         exclude(dependency("com.google.code.gson:.*:.*"))
         exclude(dependency("libs:JFoenix:.*"))
@@ -167,24 +170,6 @@ fun createExecutable(suffix: String, header: String) {
 }
 
 tasks.processResources {
-    fun convertToBSS(resource: String) {
-        doFirst {
-            val cssFile = File(projectDir, "src/main/resources/$resource")
-            val bssFile = File(projectDir, "build/compiled-resources/${resource.substring(0, resource.length - 4)}.bss")
-            bssFile.parentFile.mkdirs()
-            javaexec {
-                classpath = sourceSets["main"].compileClasspath
-                mainClass.set("com.sun.javafx.css.parser.Css2Bin")
-                args(cssFile, bssFile)
-            }
-        }
-    }
-
-    from("build/compiled-resources")
-
-    convertToBSS("assets/css/root.css")
-    convertToBSS("assets/css/blue.css")
-
     into("META-INF/versions/11") {
         from(sourceSets["java11"].output)
     }
